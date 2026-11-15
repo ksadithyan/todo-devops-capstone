@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capstone Todo App</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }
+    .card { max-width: 520px; margin: 0 auto; background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; }
+    h1 { margin: 0 0 0.25rem; font-size: 1.4rem; }
+    .sub { margin: 0 0 1rem; color: #94a3b8; font-size: 0.9rem; }
+    form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    input[type="text"] { flex: 1; padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #f8fafc; }
+    button { padding: 0.6rem 1rem; border-radius: 8px; border: none; background: #3b82f6; color: white; font-weight: 600; cursor: pointer; }
+    button:hover { background: #2563eb; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+    li { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 0.75rem; background: #0f172a; border-radius: 8px; }
+    .left { display: flex; align-items: center; gap: 0.6rem; flex: 1; }
+    .done { text-decoration: line-through; color: #64748b; }
+    .del { background: #ef4444; padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+    .del:hover { background: #dc2626; }
+    .status { color: #fca5a5; font-size: 0.85rem; margin-bottom: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Capstone Todo App</h1>
+    <p class="sub">Nginx Frontend → FastAPI Backend → MySQL</p>
+    <div id="status" class="status"></div>
+    <form id="todo-form">
+      <input id="todo-input" type="text" placeholder="Add a new task..." required />
+      <button type="submit">Add</button>
+    </form>
+    <ul id="todo-list"></ul>
+  </div>
+
+  <script>
+    const form = document.getElementById("todo-form");
+    const input = document.getElementById("todo-input");
+    const list = document.getElementById("todo-list");
+    const statusEl = document.getElementById("status");
+
+    async function loadTodos() {
+      try {
+        statusEl.textContent = "";
+        const res = await fetch("/api/todos");
+        if (!res.ok) throw new Error("Failed to load todos");
+        const todos = await res.json();
+        list.innerHTML = "";
+        for (const todo of todos) {
+          const li = document.createElement("li");
+          const left = document.createElement("div");
+          left.className = "left";
+
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = todo.done;
+          cb.onchange = async () => {
+            await fetch(`/api/todos/${todo.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ done: cb.checked })
+            });
+            loadTodos();
+          };
+
+          const span = document.createElement("span");
+          span.textContent = todo.title;
+          if (todo.done) span.className = "done";
+
+          left.append(cb, span);
+
+          const del = document.createElement("button");
+          del.textContent = "Delete";
+          del.className = "del";
+          del.onclick = async () => {
+            await fetch(`/api/todos/${todo.id}`, { method: "DELETE" });
+            loadTodos();
+          };
+
+          li.append(left, del);
+          list.appendChild(li);
+        }
+      } catch (err) {
+        statusEl.textContent = "Backend/DB unavailable: " + err.message;
+      }
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const title = input.value.trim();
+      if (!title) return;
+      await fetch("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+      });
+      input.value = "";
+      loadTodos();
+    };
+
+    loadTodos();
+  </script>
+</body>
+</html>
