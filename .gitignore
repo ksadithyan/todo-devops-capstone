@@ -1,0 +1,20 @@
+# Secrets & env files
+.env
+.env.*
+*.pem
+*.key
+# Terraform (never commit state or secret vars)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+# App dependencies & build artifacts
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+lambda/*.zip
+# OS files
+.DS_Store
+Thumbs.db
