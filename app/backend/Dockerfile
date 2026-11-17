@@ -7,7 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py test_main.py ./
 
-USER python
+RUN useradd -m appuser
+USER appuser
 
 EXPOSE 8000
 
