@@ -167,6 +167,7 @@ resource "helm_release" "loki" {
   chart            = "loki"
   namespace        = "monitoring"
   create_namespace = true
+  timeout          = 600
 
   values = [yamlencode({
     deploymentMode = "SingleBinary"
@@ -179,6 +180,14 @@ resource "helm_release" "loki" {
     singleBinary = {
       replicas    = 1
       persistence = { enabled = false }
+      extraVolumes = [{
+        name     = "loki-data"
+        emptyDir = {}
+      }]
+      extraVolumeMounts = [{
+        name      = "loki-data"
+        mountPath = "/var/loki"
+      }]
     }
     backend      = { replicas = 0 }
     read         = { replicas = 0 }
