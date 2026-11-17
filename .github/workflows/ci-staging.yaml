@@ -42,7 +42,7 @@ jobs:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
         run: |
-          TAG=${GITHUB_SHA::7}
+          TAG=v${{ github.run_number }}-${GITHUB_SHA::7}
           docker build --provenance=false --sbom=false -t $REGISTRY/todo-capstone-backend:$TAG ./app/backend
           docker push $REGISTRY/todo-capstone-backend:$TAG
 
@@ -51,7 +51,7 @@ jobs:
 
       - name: Update staging image tags in GitOps manifests
         run: |
-          TAG=${GITHUB_SHA::7}
+          TAG=v${{ github.run_number }}-${GITHUB_SHA::7}
           sed -i "s|todo-capstone-backend:.*|todo-capstone-backend:$TAG|g" k8s/staging/backend.yaml
           sed -i "s|todo-capstone-frontend:.*|todo-capstone-frontend:$TAG|g" k8s/staging/frontend.yaml
           git config user.name "github-actions[bot]"

@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag to deploy to prod (e.g. 7-char commit SHA)"
-        required: true
+        description: "Leave EMPTY to promote Staging -> Prod, or enter an old tag to rollback"
+        required: false
 
 permissions:
   contents: write
@@ -20,12 +20,19 @@ jobs:
 
       - name: Update prod image tags
         env:
-          IMAGE_TAG: ${{ inputs.image_tag }}
+          INPUT_TAG: ${{ inputs.image_tag }}
         run: |
-          sed -i "s|todo-capstone-backend:.*|todo-capstone-backend:$IMAGE_TAG|g" k8s/prod/backend.yaml
-          sed -i "s|todo-capstone-frontend:.*|todo-capstone-frontend:$IMAGE_TAG|g" k8s/prod/frontend.yaml
+          if [ -n "$INPUT_TAG" ]; then
+            BACKEND_TAG="$INPUT_TAG"
+            FRONTEND_TAG="$INPUT_TAG"
+          else
+            BACKEND_TAG=$(grep "todo-capstone-backend:" k8s/staging/backend.yaml | awk -F: '{print $NF}' | tr -d ' \r')
+            FRONTEND_TAG=$(grep "todo-capstone-frontend:" k8s/staging/frontend.yaml | awk -F: '{print $NF}' | tr -d ' \r')
+          fi
+          sed -i "s|todo-capstone-backend:.*|todo-capstone-backend:$BACKEND_TAG|g" k8s/prod/backend.yaml
+          sed -i "s|todo-capstone-frontend:.*|todo-capstone-frontend:$FRONTEND_TAG|g" k8s/prod/frontend.yaml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add k8s/prod/
-          git diff --cached --quiet || git commit -m "gitops: update prod to $IMAGE_TAG"
+          git diff --cached --quiet || git commit -m "gitops: update prod to $BACKEND_TAG"
           git push
