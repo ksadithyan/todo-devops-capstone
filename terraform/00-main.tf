@@ -80,3 +80,9 @@ variable "alert_email" {
   description = "Email address for ECR push notifications"
   type        = string
 }
+
+variable "grafana_smtp_password" {
+  description = "Gmail App Password for Grafana alerts"
+  type        = string
+  sensitive   = true
+}

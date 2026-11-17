@@ -218,6 +218,20 @@ resource "helm_release" "promtail" {
   depends_on = [helm_release.loki]
 }
 
+# 9b. Store Grafana Gmail password in a K8s Secret (Helm blocks plaintext passwords in grafana.ini)
+resource "kubernetes_secret" "grafana_smtp" {
+  metadata {
+    name      = "grafana-smtp-secret"
+    namespace = "monitoring"
+  }
+
+  data = {
+    GF_SMTP_PASSWORD = var.grafana_smtp_password
+  }
+
+  depends_on = [helm_release.loki]
+}
+
 # 10. Prometheus + Grafana + Alerting (Loki pre-configured as datasource)
 resource "helm_release" "monitoring" {
   name             = "monitoring"
@@ -229,16 +243,55 @@ resource "helm_release" "monitoring" {
 
   values = [yamlencode({
     grafana = {
+      envFromSecret = "grafana-smtp-secret"
       additionalDataSources = [{
         name   = "Loki"
+        uid    = "loki"
         type   = "loki"
         url    = "http://loki.monitoring.svc.cluster.local:3100"
         access = "proxy"
       }]
+      "grafana.ini" = {
+        smtp = {
+          enabled      = true
+          host         = "smtp.gmail.com:587"
+          user         = var.alert_email
+          from_address = var.alert_email
+          from_name    = "Todo Capstone Alerts"
+        }
+      }
+      alerting = {
+        "contactpoints.yaml" = {
+          apiVersion = 1
+          contactPoints = [{
+            orgId = 1
+            name  = "Gmail Alert"
+            receivers = [{
+              uid  = "gmail-alert-uid"
+              type = "email"
+              settings = {
+                addresses   = var.alert_email
+                singleEmail = true
+              }
+            }]
+          }]
+        }
+        "policies.yaml" = {
+          apiVersion = 1
+          policies = [{
+            orgId           = 1
+            receiver        = "Gmail Alert"
+            group_by        = ["alertname", "namespace"]
+            group_wait      = "30s"
+            group_interval  = "5m"
+            repeat_interval = "4h"
+          }]
+        }
+      }
     }
   })]
 
-  depends_on = [aws_eks_node_group.main]
+  depends_on = [aws_eks_node_group.main, kubernetes_secret.grafana_smtp]
 }
 
 # 11. Create staging & prod namespaces + inject RDS credentials as K8s Secrets
@@ -267,4 +320,22 @@ resource "kubernetes_secret" "db_secret" {
     DB_PASSWORD = random_password.db.result
     DB_NAME     = "tododb_${each.key}"
   }
+}
+
+
+# 12. Auto-load Capstone Todo Overview dashboard into Grafana
+resource "kubernetes_config_map" "grafana_todo_dashboard" {
+  metadata {
+    name      = "todo-capstone-dashboard"
+    namespace = "monitoring"
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+
+  data = {
+    "todo-capstone-overview.json" = file("${path.module}/grafana-dashboard.json")
+  }
+
+  depends_on = [helm_release.monitoring]
 }
