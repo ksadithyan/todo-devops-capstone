@@ -40,12 +40,13 @@ jobs:
       - name: Build & push Frontend and Backend images
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
+          BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
         run: |
           TAG=${GITHUB_SHA::7}
-          docker build -t $REGISTRY/todo-capstone-backend:$TAG ./app/backend
+          docker build --provenance=false --sbom=false -t $REGISTRY/todo-capstone-backend:$TAG ./app/backend
           docker push $REGISTRY/todo-capstone-backend:$TAG
 
-          docker build -t $REGISTRY/todo-capstone-frontend:$TAG ./app/frontend
+          docker build --provenance=false --sbom=false -t $REGISTRY/todo-capstone-frontend:$TAG ./app/frontend
           docker push $REGISTRY/todo-capstone-frontend:$TAG
 
       - name: Update staging image tags in GitOps manifests
