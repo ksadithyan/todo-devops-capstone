@@ -1,0 +1,59 @@
+name: CI & Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-build-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python & run backend unit tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install -r app/backend/requirements.txt
+          pytest app/backend -v
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push Frontend and Backend images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          TAG=${GITHUB_SHA::7}
+          docker build -t $REGISTRY/todo-capstone-backend:$TAG ./app/backend
+          docker push $REGISTRY/todo-capstone-backend:$TAG
+
+          docker build -t $REGISTRY/todo-capstone-frontend:$TAG ./app/frontend
+          docker push $REGISTRY/todo-capstone-frontend:$TAG
+
+      - name: Update staging image tags in GitOps manifests
+        run: |
+          TAG=${GITHUB_SHA::7}
+          sed -i "s|todo-capstone-backend:.*|todo-capstone-backend:$TAG|g" k8s/staging/backend.yaml
+          sed -i "s|todo-capstone-frontend:.*|todo-capstone-frontend:$TAG|g" k8s/staging/frontend.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/staging/
+          git diff --cached --quiet || git commit -m "gitops: deploy $TAG to staging"
+          git push
