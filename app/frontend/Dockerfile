@@ -1,5 +1,7 @@
 FROM nginx:1.27-alpine
 
+USER nginx
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY index.html /usr/share/nginx/html/index.html
 
