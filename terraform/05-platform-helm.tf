@@ -231,3 +231,31 @@ resource "helm_release" "monitoring" {
 
   depends_on = [aws_eks_node_group.main]
 }
+
+# 11. Create staging & prod namespaces + inject RDS credentials as K8s Secrets
+resource "kubernetes_namespace" "app_envs" {
+  for_each = toset(["staging", "prod"])
+
+  metadata {
+    name = each.key
+  }
+
+  depends_on = [aws_eks_node_group.main]
+}
+
+resource "kubernetes_secret" "db_secret" {
+  for_each = toset(["staging", "prod"])
+
+  metadata {
+    name      = "db-secret"
+    namespace = kubernetes_namespace.app_envs[each.key].metadata[0].name
+  }
+
+  data = {
+    DB_HOST     = aws_db_instance.main.address
+    DB_PORT     = "3306"
+    DB_USER     = aws_db_instance.main.username
+    DB_PASSWORD = random_password.db.result
+    DB_NAME     = "tododb_${each.key}"
+  }
+}
