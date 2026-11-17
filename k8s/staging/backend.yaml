@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: 623028180231.dkr.ecr.ap-south-1.amazonaws.com/todo-capstone-backend:v1
+          image: 623028180231.dkr.ecr.ap-south-1.amazonaws.com/todo-capstone-backend:9890ee4
           ports:
             - containerPort: 8000
           envFrom:
