@@ -20,7 +20,7 @@ resource "aws_iam_role" "github_actions" {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:ksadithyan/todo-devops-capstone:*"
+          "token.actions.githubusercontent.com:sub" = "repo:ksadithyan@68690336/todo-devops-capstone@1458786748:*"
         }
       }
     }]
