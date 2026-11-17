@@ -3,25 +3,35 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pymysql
 from pymysql.cursors import DictCursor
+
 app = FastAPI(title="Todo API")
 _table_ready = False
-def get_conn():
-    return pymysql.connect(
+
+
+def get_conn(use_db=True):
+    kwargs = dict(
         host=os.getenv("DB_HOST", "localhost"),
         port=int(os.getenv("DB_PORT", "3306")),
         user=os.getenv("DB_USER", "todouser"),
         password=os.getenv("DB_PASSWORD", "todopass"),
-        database=os.getenv("DB_NAME", "tododb"),
         cursorclass=DictCursor,
         autocommit=True,
     )
+    if use_db:
+        kwargs["database"] = os.getenv("DB_NAME", "tododb")
+    return pymysql.connect(**kwargs)
+
+
 def ensure_table():
     global _table_ready
     if _table_ready:
         return
-    conn = get_conn()
+    db_name = os.getenv("DB_NAME", "tododb").replace("`", "")
+    conn = get_conn(use_db=False)
     try:
         with conn.cursor() as cur:
+            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}`")
+            cur.execute(f"USE `{db_name}`")
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS todos (
@@ -34,13 +44,21 @@ def ensure_table():
         _table_ready = True
     finally:
         conn.close()
+
+
 class TodoCreate(BaseModel):
     title: str
+
+
 class TodoUpdate(BaseModel):
     done: bool
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
 @app.get("/api/todos")
 def list_todos():
     ensure_table()
@@ -54,6 +72,8 @@ def list_todos():
             return rows
     finally:
         conn.close()
+
+
 @app.post("/api/todos", status_code=201)
 def create_todo(todo: TodoCreate):
     title = todo.title.strip()
@@ -68,6 +88,8 @@ def create_todo(todo: TodoCreate):
         return {"id": todo_id, "title": title, "done": False}
     finally:
         conn.close()
+
+
 @app.patch("/api/todos/{todo_id}")
 def toggle_todo(todo_id: int, payload: TodoUpdate):
     ensure_table()
@@ -83,6 +105,8 @@ def toggle_todo(todo_id: int, payload: TodoUpdate):
             return row
     finally:
         conn.close()
+
+
 @app.delete("/api/todos/{todo_id}")
 def delete_todo(todo_id: int):
     ensure_table()
