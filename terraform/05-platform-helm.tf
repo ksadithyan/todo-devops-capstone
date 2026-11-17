@@ -287,6 +287,7 @@ resource "helm_release" "monitoring" {
             repeat_interval = "4h"
           }]
         }
+        "rules.yaml" = yamldecode(file("${path.module}/grafana-alert-rules.yaml"))
       }
     }
   })]
