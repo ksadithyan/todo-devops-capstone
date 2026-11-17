@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 623028180231.dkr.ecr.ap-south-1.amazonaws.com/todo-capstone-frontend:b0da472
+          image: 623028180231.dkr.ecr.ap-south-1.amazonaws.com/todo-capstone-frontend:v4-0440483
           ports:
             - containerPort: 80
           readinessProbe:
