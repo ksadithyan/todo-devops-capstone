@@ -9,7 +9,7 @@ spec:
     kind: Rollout
     name: backend
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 10
   metrics:
     - type: Resource
       resource:
@@ -29,7 +29,7 @@ spec:
     kind: Rollout
     name: frontend
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 10
   metrics:
     - type: Resource
       resource:
